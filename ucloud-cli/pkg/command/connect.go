@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"ucloud.dk/shared/pkg/util"
@@ -22,8 +23,10 @@ const (
 )
 
 type ConnectCommand struct {
-	Token  string `flag:"token" usage:"Token"`
-	Server string `flag:"server" usage:"Server"`
+	Token   string `flag:"token" usage:"Token"`
+	Server  string `flag:"server" usage:"Server"`
+	Web     bool   `flag:"web" usage:"Log in using an isolated Chrome/Chromium window"`
+	Browser string `flag:"browser" usage:"Chrome/Chromium executable for --web"`
 }
 
 var ConnectCommands = map[string]CommandFunc{
@@ -31,6 +34,12 @@ var ConnectCommands = map[string]CommandFunc{
 }
 
 func (c *ConnectCommand) Execute() error {
+	if c.Web {
+		return performWebConnection(c.Browser)
+	}
+	if c.Browser != "" {
+		return fmt.Errorf("--browser requires --web")
+	}
 	return performConnection()
 }
 
@@ -144,6 +153,7 @@ func saveConfig(token string, username string) error {
 		return err
 	}
 	cfg.TokenRef = token
+	cfg.TokenServer = strings.TrimRight(cfg.Environments[cfg.DefaultEnvironment].URL, "/")
 	cfg.Username = username
 
 	_, saveErr := shared.SaveConfig(cfg)

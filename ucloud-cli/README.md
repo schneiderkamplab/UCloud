@@ -30,6 +30,37 @@ run to build the `ucloud` executable
 ./build.sh
 ```
 
+### Browser login
+
+For installations where the external CLI login service is unavailable, use:
+
+```
+ucloud connect --web
+```
+
+This opens an isolated Chrome/Chromium window at the selected environment's normal
+login page. Complete institutional login and MFA yourself. The CLI reads only the
+UCloud refresh cookie from this temporary profile and validates it using
+`POST /auth/refresh`, then saves the renewable session in
+`~/.config/ucloud/config.yaml` (owner read/write only). Subsequent commands use the
+existing CLI token refresh mechanism. The browser closes and its temporary profile
+is removed after login, cancellation, or the ten-minute timeout. Existing browser
+profiles are not accessed. Passwords and institutional cookies are not captured.
+
+Chrome/Chromium must already be installed. To select its executable explicitly:
+
+```
+ucloud connect --web --browser /path/to/chromium
+```
+
+The server must use HTTPS, except for loopback development servers. A newly saved
+session is bound to that server; connect again after switching to another server.
+Only one session is stored at a time. Run the command again if the server expires
+or revokes the session. This is a client-side adaptation of web login, not an
+upstream-supported production CLI authentication guarantee: deployments must
+accept the web session at `/auth/refresh`. Failed validation leaves existing
+credentials unchanged. The original `ucloud connect` callback flow remains available.
+
 ### Usage
 
 to make it globally available

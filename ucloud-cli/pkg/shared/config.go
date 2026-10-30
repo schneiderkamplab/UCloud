@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -17,6 +18,7 @@ import (
 type Config struct {
 	Username           string                 `yaml:"username"`
 	TokenRef           string                 `yaml:"tokenRef,omitempty"`
+	TokenServer        string                 `yaml:"tokenServer,omitempty"`
 	CurrentWorkspace   util.Option[string]    `yaml:"currentWorkspace"`
 	DefaultEnvironment string                 `yaml:"defaultEnvironment"`
 	Environments       map[string]Environment `yaml:"environments"`
@@ -144,6 +146,7 @@ func UpdateConfig(config *Config) (*Config, error) {
 	}
 	cfg.DefaultEnvironment = selectChange(cfg.DefaultEnvironment, config.DefaultEnvironment)
 	cfg.TokenRef = selectChange(cfg.TokenRef, config.TokenRef)
+	cfg.TokenServer = selectChange(cfg.TokenServer, config.TokenServer)
 	if config.Environments != nil && !maps.Equal(cfg.Environments, config.Environments) {
 		cfg.Environments = config.Environments
 	}
@@ -152,11 +155,20 @@ func UpdateConfig(config *Config) (*Config, error) {
 
 func (cfg *Config) initUCloudClient() {
 	baseURL := cfg.Environments[cfg.DefaultEnvironment].URL
+	token := cfg.TokenRef
+	// Browser login credentials belong to one server. Switching environments must
+	// never transmit them to another server.
+	if cfg.TokenServer != "" && strings.TrimRight(baseURL, "/") != cfg.TokenServer {
+		token = ""
+	}
 	rpc.DefaultClient = &rpc.Client{
-		RefreshToken: cfg.TokenRef,
+		RefreshToken: token,
 		BasePath:     baseURL,
 		Client: &http.Client{
 			Timeout: 10 * time.Second,
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 		},
 	}
 }
@@ -188,7 +200,11 @@ func PrintConfig(cfg *Config) {
 	t.AppendHeader("CurrentWorkspace")
 	t.AppendHeader("DefaultEnvironment")
 	t.Cell("%v", cfg.Username)
-	t.Cell("%v", cfg.TokenRef)
+	if cfg.TokenRef == "" {
+		t.Cell("%v", "not configured")
+	} else {
+		t.Cell("%v", "[redacted]")
+	}
 	t.Cell("%v", cfg.CurrentWorkspace)
 	t.Cell("%v", cfg.DefaultEnvironment)
 	t.Print()
