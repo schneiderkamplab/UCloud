@@ -545,6 +545,11 @@ func buildParameters(app *orcapi.Application, userParams map[string]string) (map
 
 func parseParameterValue(param orcapi.ApplicationParameter, rawValue string) (orcapi.AppParameterValue, error) {
 	switch param.Type {
+	case orcapi.ApplicationParameterTypeInputFile, orcapi.ApplicationParameterTypeInputDirectory:
+		if !strings.HasPrefix(rawValue, "/") || rawValue == "/" {
+			return orcapi.AppParameterValue{}, fmt.Errorf("parameter %q expects an absolute UCloud path starting with a drive ID", param.Name)
+		}
+		return orcapi.AppParameterValueFile(rawValue, false), nil
 	case orcapi.ApplicationParameterTypeInteger:
 		n, err := strconv.ParseInt(rawValue, 10, 64)
 		if err != nil {
