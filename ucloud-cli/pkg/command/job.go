@@ -565,6 +565,10 @@ func parseParameterValue(param orcapi.ApplicationParameter, rawValue string) (or
 		return orcapi.AppParameterValueBoolean(b), nil
 	case orcapi.ApplicationParameterTypeText, orcapi.ApplicationParameterTypeTextArea:
 		return orcapi.AppParameterValueText(rawValue), nil
+	case orcapi.ApplicationParameterTypeInputFile, orcapi.ApplicationParameterTypeInputDirectory:
+		// NOTE: Paths are passed as file-typed values; UCloud resolves them
+		// against the job's mounted resources (same convention as --folder).
+		return orcapi.AppParameterValue{Type: orcapi.AppParameterValueTypeFile, Path: rawValue}, nil
 	case orcapi.ApplicationParameterTypeEnumeration:
 		for _, opt := range param.Options {
 			if opt.Value == rawValue {
